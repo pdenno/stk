@@ -1,0 +1,116 @@
+{:paths ["src" "resources"]
+ :deps {com.taoensso/timbre {:mvn/version "6.8.0"}
+        com.taoensso/telemere {:mvn/version "1.2.1"}
+        com.taoensso/telemere-slf4j {:mvn/version "1.2.1"} ; Just adding it here initializes it; try (tel/check-interop).
+        io.github.paintparty/bling {:mvn/version "0.10.0"}
+
+        ;; The next bunch hang together for MCP.
+        ;; UPGRADE STATUS (researched 2026-05-31, jar-verified): HOLDING at 0.17.2 deliberately.
+        ;;   - Latest *stable* SDK is 1.1.3; "2.0.0-Mx" reported by :search/outdated are PRE-RELEASE milestones, not a target.
+        ;;   - Core/stdio/JSON migrate to 1.1.3 with only ~4 small code edits (mcp_util.clj, file_content.clj). Not the blocker.
+        ;;   - BLOCKER: the WebFlux transports we use (Streamable + SSE) have NO 1.1.x artifact. mcp-spring-webflux was
+        ;;     DELETED after 0.18.2 and moved to org.springframework.ai/mcp-spring-webflux, which exists ONLY as 2.0.0-Mx
+        ;;     milestones (no stable, no 1.x). So WebFlux jumped 0.18.2 -> Spring AI 2.0.0-Mx, skipping 1.x entirely.
+        ;;   - There is no combination giving both a STABLE 1.1.x SDK and the WebFlux transports. Revisit when Spring AI 2.0 ships stable.
+        ;;   - See memory: mcp-sdk-upgrade-blocker.md for the full 0.17.2->1.1.x code-change list.
+        io.modelcontextprotocol.sdk/mcp {:mvn/version "0.17.2"}
+        io.modelcontextprotocol.sdk/mcp-spring-webflux {:mvn/version "0.17.2"} ; SSE transport
+        io.projectreactor.netty/reactor-netty-http {:mvn/version "1.3.5"} ; Required for SSE transport
+        ;; HOLD spring at 7.0.4: 7.0.7's ServerSentEvent.Builder .id()/.event() added a checkEvent (indexOf)
+        ;; validation with NO null-guard; mcp-spring-webflux 0.17.2 passes null -> NPE -> 500 on every
+        ;; non-initialize POST (tools/list, etc.). 7.0.4 .id()/.event() just set the field. Revisit only with a newer SDK.
+        org.springframework/spring-context {:mvn/version "7.0.4"}
+        org.springframework/spring-webflux {:mvn/version "7.0.4"}
+
+        io.replikativ/datahike {:mvn/version "0.6.1610"} ; Cannot use 0.7.1624
+        metosin/jsonista {:mvn/version "1.0.0"}
+        metosin/malli {:mvn/version "0.20.1"}
+        mount/mount {:mvn/version "0.1.23"}
+        net.clojars.wkok/openai-clojure {:mvn/version "0.23.0"}
+        org.apache.logging.log4j/log4j-core {:mvn/version "2.26.0"} ; Used by jetty
+        org.apache.tika/tika-core {:mvn/version "3.3.1"} ; llm ecosystem java lib
+        org.clj-commons/hickory {:mvn/version "0.7.7"} ; HTML parsing for web content extraction
+        org.clojure/clojure {:mvn/version "1.12.5"}
+        org.clojure/core.unify {:mvn/version "0.7.3"}
+        org.clojure/data.xml {:mvn/version "0.0.8"}
+        org.clojure/tools.logging {:mvn/version "1.3.1"}
+        org.slf4j/slf4j-api {:mvn/version "2.0.18"}
+        pogonos/pogonos {:mvn/version "0.2.1"}} ;; for prompt templating
+
+ ;;; Starting for use with clojure-mcp:
+ ;;;  1) clj -M:nrepl -m sched6.main 2>> ./logs/nrepl-error.log (starts as shown in the :nrepl :alias below.)
+ ;;;  2) cider-connect at port 7888 and do (start)
+ ;;;  3) clj -X:mcp :port 7888 (starts as shown in the :mcp alias in ~/.clojure/deps.edn. Also my-mcp, but that only additionally includes shadow-cljs, not used currently.
+ ;;;  4) claude-desktop
+
+;;; Starting for use with clj-nrepl-eval and WebFlux SSE (Server-sent events)
+;;; 0) Make sure clj-paren-repair-claude-hook is installed and bash finds it (in ~/.local/bin)
+;;; 1) C-c M-j
+;;; 2) (start)
+;;; 3) claude
+;;; 4) Expect (when it connects): SLF4J/WARN  : - Client requested unsupported protocol version: 2025-11-25, so the server will suggest the 2024-11-05 version instead
+;;;    BTW, I think 2024-10-07 is the last version CC supports, so the Java SDK is almost falling off a cliff.
+
+;; See .dir-locals.el for some defaults on CIDER C-c M-j
+ :aliases {:dev
+           {:extra-paths ["src" "test" "env/dev"] ; "src" may be necessary here, even though it is in :paths
+            :jvm-opts ["-Djdk.attach.allowAttachSelf"]
+            :extra-deps {cider/cider-nrepl {:mvn/version "0.59.0"}
+                         com.lambdaisland/classpath {:mvn/version "0.6.58"}
+                         nrepl/nrepl {:mvn/version "1.7.0"}
+                         org.clojure/java.classpath {:mvn/version "1.1.1"}
+                         org.clojure/tools.namespace {:mvn/version "1.5.1"}}
+            :main-opts ["-m" "nrepl.cmdline" "--port" "7888"]}
+
+           :small-app ; For testing a minimal application with MCP clients.
+           {:extra-paths ["examples/small-app/src"]
+            :jvm-opts ["-Djdk.attach.allowAttachSelf"]
+            :extra-deps {nrepl/nrepl {:mvn/version "1.7.0"}
+                         cider/cider-nrepl {:mvn/version "0.59.0"}}
+            :main-opts ["-m" "nrepl.cmdline"
+                        "--middleware" "[cider.nrepl/cider-middleware]"
+                        "--port" "7888"]}
+
+           :test
+           {:extra-paths ["src" "test" "env/test"]
+            :main-opts ["-m" "kaocha.runner"]
+            :extra-deps {cider/cider-nrepl {:mvn/version "0.59.0"}
+                         com.lambdaisland/classpath {:mvn/version "0.6.58"}
+                         nrepl/nrepl {:mvn/version "1.7.0"}
+                         org.clojure/java.classpath {:mvn/version "1.1.1"}
+                         org.clojure/tools.namespace {:mvn/version "1.5.1"}
+                         lambdaisland/kaocha {:mvn/version "1.91.1392"}}}
+
+           :build
+           {:deps {io.github.clojure/tools.build {:mvn/version "0.10.14"}}
+            :ns-default build}}}
+
+;;; clj -X:search/outdated
+;;;   | :file    | :name                                          | :current | :latest  |
+;;;   |----------|------------------------------------------------|----------|----------|
+;;;   | deps.edn | io.modelcontextprotocol.sdk/mcp                | 0.17.2   | 2.0.0-M2 | ; 2.0.0-Mx are MILESTONES; latest STABLE is 1.1.3 (see upgrade-status note above).
+;;;   |          | io.modelcontextprotocol.sdk/mcp-spring-webflux | 0.17.2   | 0.18.1   | ; WebFlux moved to org.springframework.ai/mcp-spring-webflux, but that's 2.0.0-Mx only (no 1.x). This is the upgrade blocker.
+;;;   |          | io.projectreactor.netty/reactor-netty-http     | 1.3.3    | 1.3.5    | ; I'm not sure about this one.
+;;;   |          | io.replikativ/datahike                         | 0.6.1610 | 0.7.1624 | ; Not yet.
+;;;   |          | org.apache.jena/apache-jena-libs               | 4.9.0    | 6.0.0    | ; This will go away. As will other onto things!
+;;;   |          | org.springframework/spring-context             | 7.0.4    | 7.0.7    | ; This will be simplified out for org-springframework.ai
+;;;   |          | org.springframework/spring-webflux             | 7.0.4    | 7.0.7    | ; This will be simplified out for org-springframework.ai
+
+;;;   [##################################################] 41/41
+;;;   | :file    | :name                                          | :current | :latest  |
+;;;   |----------|------------------------------------------------|----------|----------|
+;;;   | deps.edn | dev.langchain4j/langchain4j                    | 1.13.1   | 1.15.1   |
+;;;   |          | dev.langchain4j/langchain4j-anthropic          | 1.13.1   | 1.15.1   |
+;;;   |          | dev.langchain4j/langchain4j-open-ai            | 1.13.1   | 1.15.1   |
+;;;   |          | io.github.clojure/tools.build                  | 0.10.13  | 0.10.14  |
+;;;   |          | io.modelcontextprotocol.sdk/mcp                | 0.17.2   | 2.0.0-M3 |
+;;;   |          | io.modelcontextprotocol.sdk/mcp-spring-webflux | 0.17.2   | 0.18.2   |
+;;;   |          | io.projectreactor.netty/reactor-netty-http     | 1.3.3    | 1.3.5    |
+;;;   |          | io.replikativ/datahike                         | 0.6.1610 | 0.7.1624 | Not yet.
+;;;   |          | org.apache.logging.log4j/log4j-core            | 2.25.4   | 2.26.0   |
+;;;   |          | org.apache.tika/tika-core                      | 3.3.0    | 3.3.1    |
+;;;   |          | org.clojure/clojure                            | 1.12.4   | 1.12.5   |
+;;;   |          | org.clojure/core.unify                         | 0.7.1    | 0.7.3    |
+;;;   |          | org.slf4j/slf4j-api                            | 2.0.17   | 2.0.18   |
+;;;   |          | org.springframework/spring-context             | 7.0.4    | 7.0.7    |
+;;;   |          | org.springframework/spring-webflux             | 7.0.4    | 7.0.7    |
