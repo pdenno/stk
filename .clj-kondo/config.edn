@@ -1,0 +1,61 @@
+;;; https://github.com/borkdude/clj-kondo/blob/master/doc/config.md
+;;; Ideas:
+;;; 1) When things don't work, delete .cache.   (rm -rf .clj-kondo/.cache)
+;;; 2) When things don't work, check how old clj-kondo is: /usr/local/bin/clj-kondo --version. Ditto for clojure-lsp.
+;;; 3) To see which linter is generating a warning put one of these in front of the expression:
+;;;    #_:clj-kondo/ignore   (def ^:diag diag (atom nil))
+;;;    #_:clojure-lsp/ignore (def ^:diag diag (atom nil))
+
+{:project-root-uri "file:///home/pdenno/Documents/git/stk" ; ToDo: Fix this!
+
+;;; Do some linters have ns-qualified names and other not?
+
+ :linters {;; unused-referred-var is about :refer. https://github.com/clj-kondo/clj-kondo/blob/master/doc/linters.md#unused-referred-var
+           :unused-referred-var {:exclude {taoensso.timbre [error debug info log]
+                                           clojure.test    [deftest is testing]}}
+
+           ;; https://github.com/clj-kondo/clj-kondo/blob/master/doc/linters.md#unresolved-var
+           ;; New versions of datahike don't actually have forms for these functions and macros.
+           ;; But there is lots of clojure.spec in DH, so many things will be caught at runtime.
+           ;; ajax.core has similar problems.
+           :unresolved-var      {:exclude [datahike.api ajax.core
+                                           taoensso.telemere/with-kind-filter
+                                           taoensso.telemere/signal!
+                                           taoensso.telemere/*ctx*
+                                           taoensso.telemere/add-handler!
+                                           taoensso.telemere/handler:console
+                                           taoensso.telemere/handler:file
+                                           taoensso.telemere/pr-signal-fn
+                                           taoensso.telemere/set-ctx!
+                                           taoensso.telemere/set-middleware!
+                                           taoensso.telemere/stop-handlers!]}
+           :clj-kondo/unused-public-var {:exclude-when-contains-meta #{:diag :admin}}
+
+           ;; :exclude-patterns is for bindings, not vars. See https://github.com/clj-kondo/clj-kondo/blob/master/doc/linters.md
+           #_#_:unused-binding {:exclude-patterns ["^recreate.*" "^unknown-projects" "^backup.*"]}
+
+           ;;------------ Some clojure-lsp things ---------------
+
+           ;; https://clojure-lsp.io/settings/#clojure-lspunused-public-var
+           :clojure-lsp/unused-public-var {:level :warning
+                                           :exclude #{}
+                                           :exclude-when-contains-meta #{:diag :admin}}} ; This works again [2024-05-18 Sat] ; And it stopped again [2025-03-04]
+
+
+ ;; Gist for defstate: https://gist.github.com/ethpran/e1741a5c408aec831b5e3a7e24f40fea
+ :hooks   {:analyze-call {mount.core/defstate hooks.defstate/defstate
+                          #_#_stk.sutil/with-connect-atom hooks.with-connect-atom/with-connect-atom}} ; This didn't actually work. I used the :lint-as instead.
+
+
+
+
+
+ ;; https://github.com/clj-kondo/clj-kondo/blob/master/doc/config.md#lint-a-custom-macro-like-a-built-in-macro --- Use defn, not defmacro.
+ :lint-as {;https://andersmurphy.com/2024/01/03/clojure-clj-kondo-datalog-linting.html
+           stk.sutil/with-connect-atom               clojure.core/let
+           applied-science.js-interop/defn           clojure.core/defn
+           datahike.api/q                            datascript.core/q
+           mount.core/defstate                       clj-kondo.lint-as/def-catch-all}}   ; Because the hook is not working!
+
+;;; Hooks are used for macros for which :lint-as doesn't work. Currently mine for defstate doesn't work at all!
+;;; 2024-04-23: Now I'm trying to put the mount/defstate stuff in its own directory and copy ns setup from other examples. No help.

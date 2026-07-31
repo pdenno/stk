@@ -1,0 +1,19 @@
+{:nrepl-port 7888
+ :mcp-port 8091
+ :mcp-transport :streamable
+
+ ;;-------------- Resources (There is also dynamically created DB_SCHEMA.md.)
+ :resources
+ {#_"SCHED6_MCP_GUIDE.md"
+  #_{:description "READ THIS BEFORE YOU START A PROJECT. It is a guide for the MCP LLM that provides essentail information for doing any work."
+   :file-path "resources/sched6/resources/SCHED6_MCP_GUIDE.md"}
+
+  #_"MINIZINC_MODELING_AND_DEBUGGING.md"
+  #_{:description "Reusable MiniZinc modeling patterns (assignment, sequencing, sequence-dependent setup) plus techniques for correcting problems in your MiniZinc code."
+   :file-path "resources/sched6/resources/MINIZINC_MODELING_AND_DEBUGGING.md"}}
+
+;;-------------- Prompts
+ :prompts
+ {#_"TEST_PROMPT.md"
+  #_{:description "A prompt that will ask the LLM to say: \"What a wonderful test prompt!\""
+   :file-path "resources/sched6/prompts/TEST_PROMPT.md"}}}
