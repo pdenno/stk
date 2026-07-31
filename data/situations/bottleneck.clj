@@ -42,10 +42,18 @@
    :imports      ["EMF causality/composition/correlation/interpretation/participation"
                   "sched6 event-patterns, performance-goals"
                   "DUL Roles, SystemsLite"]
-   :comment      (str "Canonical situation: throughput constrained by the station with "
-                      "maximum cycle time. Generic form (infinite buffers) from cycle-time "
-                      "imbalance; buffered extension adds blocking/starvation coupling "
-                      "through finite buffers (Li & Meerkov 2009).")})
+   :purpose      (str "Canonical situation: throughput constrained by the station with maximum cycle time.\n"
+                      "Two viewpoints:\n"
+                      "  1) generic form (infinite buffers) from cycle-time imbalance, and\n"
+                      "  2) buffered extension adds blocking/starvation coupling through finite buffers (Li & Meerkov 2009).\n"
+                      "Note, however, that Li & Meerkov would likely interpret the variation in cycle to be owing to breakdowns.\n"
+                      "There is no notion of breakdown in these axioms. You might use this as a template to be modified for that purpose.\n"
+                      "Likewise, it could serve as a template for cyclical scheduling and line balancing problems.")
+   :source-divergence (str "Enriched/ground vocabulary says occupancy-time where the TTL says cycle time: "
+                           "'cycle time' is overloaded, and occupancy is neutral about cause "
+                           "(processing, setup, breakdown-inflated). The faithful layer keeps TTL names for 1:1 audit.")
+   :relevant-SQs ["What is limiting our throughput this week?"
+                  "Which station should improvement effort target?"]})
 
 (def prefixes
   {'bneck  "http://sched6.org/ont/bottleneck#"
@@ -66,6 +74,7 @@
 (def signature
   '{:classes
     [;; physical
+     ;; ToDo: Workstation, Buffer, WIP, SystemThroughput and many more are more general and therefore probably belong elsewhere.
      bneck/Workstation bneck/Buffer bneck/WorkInProcess
      ;; qualities & regions
      bneck/CycleTimeBalance bneck/CycleTimeVariabilityRegion
@@ -94,8 +103,8 @@
     ;; Predicates INTRODUCED by axioms-enriched (not in the OWL source).
     :introduced
     [plays in-setting causes-in correlated-in composed-in
-     cycle-time buffer-state buffer-capacity station-of
-     cv-of-line max-cycle-station imbalanced-line bottleneck-station
+     occupancy-time buffer-state buffer-capacity station-of
+     cv-of-line max-occupancy-station imbalanced-line bottleneck-station
      blocked starved throughput-shortfall]})
 
 ;;; ===========================================================================
@@ -115,13 +124,19 @@
     [forall [?x] [=> [bneck/CycleTimeVariabilityRegion ?x] [dul/Region ?x]]]
     [forall [?x] [=> [bneck/BalancedCVRegion ?x]           [bneck/CycleTimeVariabilityRegion ?x]]]
     [forall [?x] [=> [bneck/ImbalancedCVRegion ?x]         [bneck/CycleTimeVariabilityRegion ?x]]]
-    [forall [?x] [not [and [bneck/BalancedCVRegion ?x] [bneck/ImbalancedCVRegion ?x]]]]
+    [forall [?x] [not [and
+                       [bneck/BalancedCVRegion ?x]
+                       [bneck/ImbalancedCVRegion ?x]]]]
     ;; CV space is partitioned (owl:unionOf equivalence)
     [forall [?x] [<=> [bneck/CycleTimeVariabilityRegion ?x]
-                  [or [bneck/BalancedCVRegion ?x] [bneck/ImbalancedCVRegion ?x]]]]
+                  [or
+                   [bneck/BalancedCVRegion ?x]
+                   [bneck/ImbalancedCVRegion ?x]]]]
     [forall [?x] [=> [bneck/BottleneckConstraintParameter ?x] [dul/Parameter ?x]]]
     ;; restriction: the constraint parameter parametrizes only imbalanced-CV regions
-    [forall [?x ?r] [=> [and [bneck/BottleneckConstraintParameter ?x] [dul/parametrizes ?x ?r]]
+    [forall [?x ?r] [=> [and
+                         [bneck/BottleneckConstraintParameter ?x]
+                         [dul/parametrizes ?x ?r]]
                      [bneck/ImbalancedCVRegion ?r]]]
     ;; restriction: a BufferCapacity is a quality only of Buffers
     [forall [?q ?b] [=> [and [bneck/BufferCapacity ?q] [dul/isQualityOf ?q ?b]]
@@ -174,7 +189,9 @@
     ;; pattern isSatisfiedBy situation + entity includedIn situation.
     [forall [?ent ?role ?sit]
      [=> [plays ?ent ?role ?sit]
-      [and [dul/Situation ?sit] [in-setting ?ent ?sit]]]]
+      [and
+       [dul/Situation ?sit]
+       [in-setting ?ent ?sit]]]]
 
     ;; --- E2. Setting membership, collapsing includesEvent/includesObject.
     [forall [?x ?sit]
@@ -182,19 +199,23 @@
 
     ;; --- E3. WARRANTED CAUSATION, 4-ary: within situation ?sit, ?c causes ?e,
     ;; warranted by theory ?th. Collapses the EMF EventCausalityPattern /
-    ;; EventCausalitySituation / Justification-role chain (~8 individuals in the
-    ;; TTL) into one relation. The theory argument is the MDC-style mechanism
-    ;; warrant: no causal claim without its science.
+    ;; EventCausalitySituation / Justification-role chain (~8 individuals in the TTL) into one relation.
+    ;; The theory argument is the MDC-style mechanism warrant: no causal claim without its science.
     [forall [?c ?e ?sit ?th]
      [=> [causes-in ?c ?e ?sit ?th]
-      [and [in-setting ?c ?sit] [in-setting ?e ?sit]
-       [dul/Theory ?th] [in-setting ?th ?sit]]]]
+      [and
+       [in-setting ?c ?sit]
+       [in-setting ?e ?sit]
+       [dul/Theory ?th]
+       [in-setting ?th ?sit]]]]
 
     ;; --- E4. Warranted correlation (blocking <-> starvation coupling).
     [forall [?e1 ?e2 ?sit ?th]
      [=> [correlated-in ?e1 ?e2 ?sit ?th]
-      [and [in-setting ?e1 ?sit] [in-setting ?e2 ?sit]
-       [dul/Theory ?th] [in-setting ?th ?sit]]]]
+      [and [in-setting ?e1 ?sit]
+       [in-setting ?e2 ?sit]
+       [dul/Theory ?th]
+       [in-setting ?th ?sit]]]]
     [forall [?e1 ?e2 ?sit ?th]
      [=> [correlated-in ?e1 ?e2 ?sit ?th] [correlated-in ?e2 ?e1 ?sit ?th]]]
 
@@ -202,11 +223,13 @@
     ;; downstream starvation).
     [forall [?whole ?part ?sit]
      [=> [composed-in ?whole ?part ?sit]
-      [and [in-setting ?whole ?sit] [in-setting ?part ?sit]]]]
+      [and
+       [in-setting ?whole ?sit]
+       [in-setting ?part ?sit]]]]
 
     ;; --- E6. COMPUTABLE DEFINITIONS - the recognizer's teeth.
     ;; cv-of-line is a measurement predicate: its value is COMPUTED from
-    ;; cycle-time ground claims (sigma/mu), not matched. Tool seam.
+    ;; occupancy-time ground claims (sigma/mu), not matched. Tool seam.
     [forall [?line ?t ?v]
      [=> [cv-of-line ?line ?t ?v] [>= ?v 0]]]
 
@@ -214,31 +237,45 @@
     ;; (threshold supplied by the region; 0.1 in the TTL glosses).
     [forall [?line ?t]
      [<=> [imbalanced-line ?line ?t]
-      [exists [?v] [and [cv-of-line ?line ?t ?v] [>= ?v 0.1]]]]]
+      [exists [?v]
+       [and
+        [cv-of-line ?line ?t ?v]
+        [>= ?v 0.1]]]]]
 
-    ;; The bottleneck station is the max-cycle-time station of an imbalanced line.
+    ;; The bottleneck station is the max-occupancy-time station of an imbalanced line.
     [forall [?ws ?line ?t]
-     [<=> [max-cycle-station ?ws ?line ?t]
-      [and [station-of ?ws ?line]
+     [<=> [max-occupancy-station ?ws ?line ?t]
+      [and
+       [station-of ?ws ?line]
        [forall [?w2] [=> [station-of ?w2 ?line]
                       [exists [?c1 ?c2]
-                       [and [cycle-time ?ws ?c1 ?t] [cycle-time ?w2 ?c2 ?t] [>= ?c1 ?c2]]]]]]]]
+                       [and
+                        [occupancy-time ?ws ?c1 ?t]
+                        [occupancy-time ?w2 ?c2 ?t]
+                        [>= ?c1 ?c2]]]]]]]]
+
     [forall [?ws ?line ?t]
      [<=> [bottleneck-station ?ws ?line ?t]
-      [and [max-cycle-station ?ws ?line ?t] [imbalanced-line ?line ?t]]]]
+      [and
+       [max-occupancy-station ?ws ?line ?t]
+       [imbalanced-line ?line ?t]]]]
 
     ;; Blocking: a station is blocked when some buffer immediately downstream
     ;; of it is full. Only possible in finite-buffer lines.
     [forall [?ws ?t]
      [<=> [blocked ?ws ?t]
-      [exists [?b] [and [bneck/Buffer ?b] [bneck/upstreamOf ?ws ?b]
+      [exists [?b] [and
+                    [bneck/Buffer ?b]
+                    [bneck/upstreamOf ?ws ?b]
                     [buffer-state ?b full ?t]]]]]
 
     ;; Starvation: a station is starved when some buffer immediately upstream
     ;; of it is empty.
     [forall [?ws ?t]
      [<=> [starved ?ws ?t]
-      [exists [?b] [and [bneck/Buffer ?b] [bneck/upstreamOf ?b ?ws]
+      [exists [?b] [and
+                    [bneck/Buffer ?b]
+                    [bneck/upstreamOf ?b ?ws]
                     [buffer-state ?b empty ?t]]]]]
 
     ;; --- E7. RECOGNITION BRIDGE: computable layer entails the DnS layer.
@@ -248,7 +285,8 @@
     [forall [?ws ?line ?t]
      [=> [bottleneck-station ?ws ?line ?t]
       [exists [?sit ?imb ?bstate ?th]
-       [and [dul/Situation ?sit]
+       [and
+        [dul/Situation ?sit]
         [plays ?ws bneck/BottleneckStationRole ?sit]
         [causes-in ?imb ?bstate ?sit ?th]
         [bneck/GenericBottleneckTheory ?th]]]]]
@@ -256,11 +294,15 @@
     ;; Blocking and starvation on the same imbalanced line are correlated,
     ;; warranted by buffered-line theory (Li & Meerkov).
     [forall [?w1 ?w2 ?line ?t]
-     [=> [and [blocked ?w1 ?t] [starved ?w2 ?t]
-          [station-of ?w1 ?line] [station-of ?w2 ?line]
+     [=> [and
+          [blocked ?w1 ?t]
+          [starved ?w2 ?t]
+          [station-of ?w1 ?line]
+          [station-of ?w2 ?line]
           [imbalanced-line ?line ?t]]
       [exists [?sit ?th]
-       [and [dul/Situation ?sit]
+       [and
+        [dul/Situation ?sit]
         [plays ?w1 bneck/BlockedStationRole ?sit]
         [plays ?w2 bneck/StarvedStationRole ?sit]
         [correlated-in ?w1 ?w2 ?sit ?th]
@@ -269,14 +311,15 @@
     ;; Throughput shortfall (performance-goals bridge): a bottleneck situation
     ;; causes a shortfall against the assumed throughput goal.
     [forall [?line ?t]
-     [=> [exists [?ws] [bottleneck-station ?ws ?line ?t]]
+     [=> [exists [?ws]
+          [bottleneck-station ?ws ?line ?t]]
       [throughput-shortfall ?line ?t]]]])
 
 (def computable
   "Predicates the recognizer COMPUTES (tool seam) rather than matches.
    Everything else in axioms-enriched is derived by match/unify over claims."
-  '{cv-of-line       "sigma/mu over the line's cycle-time claims at ?t"
-    max-cycle-station "argmax of cycle-time claims over station-of ?line"
+  '{cv-of-line       "sigma/mu over the line's occupancy-time claims at ?t"
+    max-occupancy-station "argmax of occupancy-time claims over station-of ?line"
     imbalanced-line  "threshold test on cv-of-line (0.1 per TTL gloss)"
     blocked          "join upstream-of x buffer-state=full"
     starved          "join upstream-of x buffer-state=empty"})
@@ -302,9 +345,10 @@
     [bneck/upstreamOf ws-4 b-4] [bneck/upstreamOf b-4 ws-5]
     [buffer-capacity b-1 10] [buffer-capacity b-2 10]
     [buffer-capacity b-3 10] [buffer-capacity b-4 10]
-    ;; cycle times (minutes) - the observable that carries the imbalance
-    [cycle-time ws-1 30 t1] [cycle-time ws-2 30 t1] [cycle-time ws-3 45 t1]
-    [cycle-time ws-4 30 t1] [cycle-time ws-5 30 t1]
+    ;; machine occupancy times (minutes; the TTL calls these cycle times) -
+    ;; the observable that carries the imbalance
+    [occupancy-time ws-1 30 t1] [occupancy-time ws-2 30 t1] [occupancy-time ws-3 45 t1]
+    [occupancy-time ws-4 30 t1] [occupancy-time ws-5 30 t1]
     ;; buffer states observed at t1
     [buffer-state b-1 partial t1]
     [buffer-state b-2 full t1]
@@ -321,7 +365,7 @@
   '[;; computable layer
     [cv-of-line line-1 t1 0.20]                      ; mean 33, sd 6.7 -> CV 0.20
     [imbalanced-line line-1 t1]
-    [max-cycle-station ws-3 line-1 t1]
+    [max-occupancy-station ws-3 line-1 t1]
     [bottleneck-station ws-3 line-1 t1]
     [blocked ws-2 t1]                                ; b-2 (downstream of ws-2) full
     [starved ws-4 t1]                                ; b-3 (upstream of ws-4) empty
@@ -338,6 +382,33 @@
     [composed-in bottleneck-state-1 wip-accumulation-1 sit-1]
     [composed-in bottleneck-state-1 starvation-1 sit-1]
     [throughput-shortfall line-1 t1]])
+
+;;; ===========================================================================
+;;; PROVENANCE - how sit-1 came to be believed. In-file, justifications cite
+;;; claim FORMS (claims are values); in Datahike they become entity refs, and
+;;; the belief-time side (who/when/what-tx) lands on the tx entity per
+;;; etk docs/etk-diachronic-claims.md. Two-level chain: the situation is
+;;; justified by computables, computables by ground claims.
+;;; ===========================================================================
+
+(def provenance
+  '{sit-1
+    {:satisfies      bneck/BottleneckStateType         ; the description satisfied
+     :ttl-source     "bottleneck#production-line-situation-1"
+     :constructed-by :recognizer                       ; vs :hand-asserted, :adapted
+     :fit-verdict    :satisfied                        ; vs :closest-template, :none
+     :justified-by   [[bottleneck-station ws-3 line-1 t1]
+                      [blocked ws-2 t1]
+                      [starved ws-4 t1]]}
+    [bottleneck-station ws-3 line-1 t1]
+    {:computed-by  max-occupancy-station
+     :justified-by [[occupancy-time ws-1 30 t1] [occupancy-time ws-2 30 t1]
+                    [occupancy-time ws-3 45 t1] [occupancy-time ws-4 30 t1]
+                    [occupancy-time ws-5 30 t1]
+                    [cv-of-line line-1 t1 0.20]]}
+    [blocked ws-2 t1]
+    {:computed-by  blocked
+     :justified-by [[bneck/upstreamOf ws-2 b-2] [buffer-state b-2 full t1]]}})
 
 ;;; ===========================================================================
 ;;; Glosses - rdfs:label/comment; the NL bridge for interviews and mentoring.
@@ -371,11 +442,11 @@
     causes-in      "(4-ary) within ?sit, ?c causes ?e, warranted by theory ?th. No causal claim without its science."
     correlated-in  "(4-ary, symmetric) within ?sit, ?e1 and ?e2 are correlated, warranted by ?th."
     composed-in    "(3-ary) within ?sit, ?whole has component ?part."
-    cycle-time     "(3-ary) station, minutes, time. Ground observable."
+    occupancy-time "(3-ary) station, minutes, time. Ground observable. The TTL's 'cycle time'; renamed because occupancy is neutral about cause (processing, setup, breakdown-inflated)."
     buffer-state   "(3-ary) buffer, {empty partial full}, time. Ground observable."
     station-of     "(binary) station belongs to line. Ground observable."
-    cv-of-line     "(3-ary, COMPUTED) line, time, coefficient of variation of cycle times."
-    max-cycle-station "(3-ary, COMPUTED) the argmax cycle-time station of a line."
+    cv-of-line     "(3-ary, COMPUTED) line, time, coefficient of variation of occupancy times."
+    max-occupancy-station "(3-ary, COMPUTED) the argmax occupancy-time station of a line."
     imbalanced-line "(binary, COMPUTED) CV at or above threshold."
     bottleneck-station "(3-ary, COMPUTED) max-cycle station of an imbalanced line."
     blocked        "(binary, COMPUTED) station with a full buffer immediately downstream."
