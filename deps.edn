@@ -2,25 +2,12 @@
  :deps {com.taoensso/timbre {:mvn/version "6.8.0"}
         com.taoensso/telemere {:mvn/version "1.2.1"}
         com.taoensso/telemere-slf4j {:mvn/version "1.2.1"} ; Just adding it here initializes it; try (tel/check-interop).
+        expound/expound {:mvn/version "0.9.0"} ; more readable spec messages
+        funcool/promesa {:mvn/version "11.0.678"}
         io.github.paintparty/bling {:mvn/version "0.10.0"}
 
-        ;; The next bunch hang together for MCP.
-        ;; UPGRADE STATUS (researched 2026-05-31, jar-verified): HOLDING at 0.17.2 deliberately.
-        ;;   - Latest *stable* SDK is 1.1.3; "2.0.0-Mx" reported by :search/outdated are PRE-RELEASE milestones, not a target.
-        ;;   - Core/stdio/JSON migrate to 1.1.3 with only ~4 small code edits (mcp_util.clj, file_content.clj). Not the blocker.
-        ;;   - BLOCKER: the WebFlux transports we use (Streamable + SSE) have NO 1.1.x artifact. mcp-spring-webflux was
-        ;;     DELETED after 0.18.2 and moved to org.springframework.ai/mcp-spring-webflux, which exists ONLY as 2.0.0-Mx
-        ;;     milestones (no stable, no 1.x). So WebFlux jumped 0.18.2 -> Spring AI 2.0.0-Mx, skipping 1.x entirely.
-        ;;   - There is no combination giving both a STABLE 1.1.x SDK and the WebFlux transports. Revisit when Spring AI 2.0 ships stable.
-        ;;   - See memory: mcp-sdk-upgrade-blocker.md for the full 0.17.2->1.1.x code-change list.
-        io.modelcontextprotocol.sdk/mcp {:mvn/version "0.17.2"}
-        io.modelcontextprotocol.sdk/mcp-spring-webflux {:mvn/version "0.17.2"} ; SSE transport
-        io.projectreactor.netty/reactor-netty-http {:mvn/version "1.3.5"} ; Required for SSE transport
-        ;; HOLD spring at 7.0.4: 7.0.7's ServerSentEvent.Builder .id()/.event() added a checkEvent (indexOf)
-        ;; validation with NO null-guard; mcp-spring-webflux 0.17.2 passes null -> NPE -> 500 on every
-        ;; non-initialize POST (tools/list, etc.). 7.0.4 .id()/.event() just set the field. Revisit only with a newer SDK.
-        org.springframework/spring-context {:mvn/version "7.0.4"}
-        org.springframework/spring-webflux {:mvn/version "7.0.4"}
+        ;; Core Java MCP SDK (includes native STDIO, JDK HttpClient SSE, and Streamable HTTP)
+        io.modelcontextprotocol.sdk/mcp {:mvn/version "2.0.0"}
 
         io.replikativ/datahike {:mvn/version "0.6.1610"} ; Cannot use 0.7.1624
         metosin/jsonista {:mvn/version "1.0.0"}

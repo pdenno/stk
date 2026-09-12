@@ -23,14 +23,15 @@
    'str        'clojure.string
    'd          'datahike.api
    'dp         'datahike.pull-api
-   'dutil      'develop.dutil
+;   'dutil      'develop.dutil
    'm          'malli.core
    'me         'malli.error
    'mjson      'malli.json-schema
    'mount      'mount.core
    'p          'promesa.core
    'px         'promesa.exec
-   'sschema    'stk.situations.schema
+   'bottle     'stk.descriptions.theories.bottleneck
+   'sschema    'stk.descriptions.schema
    'tel        'taoensso.telemere
    #_'openai    #_'wkok.openai-clojure.api})
 

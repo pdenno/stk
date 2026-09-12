@@ -6,7 +6,7 @@
    [clojure.tools.namespace.repl :as tools-ns :refer [refresh set-refresh-dirs]]
    [develop.repl :refer [ns-setup! undo-ns-setup!]] ; for use at REPL.
    [expound.alpha :as expound]
-   [lambdaisland.classpath.watch-deps :as watch-deps] ; hot loading for deps.
+;;;   [lambdaisland.classpath.watch-deps :as watch-deps] ; hot loading for deps.
    [mount.core :as mount]
    [stk.mcp-core] ; for mount
    [stk.mcp-util :as mutil]
@@ -15,7 +15,7 @@
 [ns-setup! undo-ns-setup!] ; for mount
 
 ;;; uncomment to enable hot loading for deps
-(binding [*out* *err*] (watch-deps/start! {:aliases [:nrepl :dev :test]}))
+;;;(binding [*out* *err*] (watch-deps/start! {:aliases [:nrepl :dev :test]}))
 
 (alter-var-root #'s/*explain-out* (constantly expound/printer))
 (add-tap (bound-fn* clojure.pprint/pprint))

@@ -1,7 +1,12 @@
-(ns stk.situations.schema
-  "Malli entry contract for the canonical-situation (competency) library.
+(ns stk.descriptions.schema
+  "Malli entry contract for the canonical-Description (competency) library.
 
-   Library membership is BY CONTRACT, not by inheritance: a canonical Situation
+   DnS orientation: library entries are DESCRIPTIONS (type-like; in DUL, Theory,
+   Plan, and Diagnosis are subclasses of Description). Situations are the
+   instance-like settings that `satisfy` them; kinds of situations are given by
+   the Descriptions they satisfy, not by a parallel type hierarchy.
+
+   Library membership is BY CONTRACT, not by inheritance: a canonical Description
    is whatever passes `validate-entry` - required metadata (:purpose above all,
    since the orchestrator reads it to judge fit), signature, faithful and
    enriched axiom sets, computables, ground-claims/oracle recognizer contract,
@@ -70,7 +75,7 @@
    [:source-divergence {:optional true} :string]
    [:ontology-iri      {:optional true} :string]
    [:imports           {:optional true} [:vector :string]]
-   [:relevant-SQs      {:description "Standing questions this situation helps answer; the SQ<->situation index locates the recognizer's neighborhood."
+   [:relevant-SQs      {:description "Standing questions this Description helps answer; the SQ<->Description index locates the recognizer's neighborhood."
                         :optional true}
     [:vector :string]]])
 
@@ -128,4 +133,5 @@
 (defn ^:diag check-bottleneck
   "REPL convenience: validate the first library entry."
   []
-  (validate-entry (load-entry "data/situations/bottleneck.clj" 'situations.bottleneck)))
+  (validate-entry (load-entry "src/stk/descriptions/theories/bottleneck.clj"
+                              'stk.descriptions.theories.bottleneck)))

@@ -6,7 +6,7 @@
    [clojure.edn :as edn]
    [mount.core :as mount :refer [defstate]]
    [promesa.core :as p]
-   [stk.situations.schema :as sschema] ; For mount
+   [stk.descriptions.schema :as sschema] ; For mount
    [stk.util :as util :refer [log!]])
   (:import [io.modelcontextprotocol.server.transport
             StdioServerTransportProvider

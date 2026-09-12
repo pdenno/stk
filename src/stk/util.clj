@@ -26,10 +26,11 @@
   "Log info-string to agent log. Using this, and not console, is essential to MCP server operation."
   ([msg-text] (alog! msg-text {}))
   ([msg-text {:keys [level] :or {level :info}}]
-   (tel/with-kind-filter {:allow :agents}
-     (tel/signal!
-      {:kind :agents, :level (or level :info), :msg msg-text}))
-   nil))
+   (binding [*out* *err*]
+     (tel/with-kind-filter {:allow :agents}
+       (tel/signal!
+        {:kind :agents, :level (or level :info), :msg msg-text}))
+     nil)))
 
 (defn log!
   "This is to keep cider stepping from stumbling over the telemere log! macro."
@@ -54,24 +55,43 @@
              (= :warn level) (print-bling (bling [:bold.blue heading] " " [:yellow (str file ":" line " - " msg)]))
              :else (print-bling (bling [:bold.blue heading] " " [:olive (str file ":" line " - " msg)])))))))
 
+(defn stdio-console-output-fn
+  "I don't want to see hostname and time, etc. in console logging. This one is MCP STDIO, no fancy coloring."
+  ([] :can-be-a-no-op) ; for shutdown, at least.
+  ([signal]
+   (when-not (= (:kind signal) :agents)
+     (let [{:keys [kind level location msg_]} signal
+           file (:file location)
+           file (when (string? file)
+                  (let [[_ stbd-file] (re-matches #"^.*(stk.*)$" file)]
+                    (or stbd-file file)))
+           line (:line location)
+           msg (if-let [s (not-empty (force msg_))] s "\"\"")
+           heading (-> (str (name kind) "/" (name level) " ") str/upper-case)]
+       (str heading " " file ":" line " - " msg)))))       
+
 (defn config-log!
   "Configure Telemere: set reporting levels and specify a custom :output-fn.
    Only MCP can use console out."
   []
-  ;; Remove any default console handler that might exist
-  (tel/remove-handler! :default/console) ; ToDo: Guessing on :stacktraces true
-  (tel/add-handler! :default/console (tel/handler:console {:output-fn custom-console-output-fn :stacktraces true}))
-  (tel/add-handler! :agent/log (tel/handler:file {:output-fn stk-log-output-fn
-                                                  :path "./logs/stk-log.txt"
-                                                  :interval :daily}))
-  (tel-log/tools-logging->telemere!) ;; Send tools.logging through telemere. Check this with (tel/check-interop)
-  ;; ONLY redirect streams if NOT running as MCP server..... I think it is okay if we NEVER redirect streams.
-  ;;(when-not (System/getenv "MCP_MODE") (tel/streams->telemere!))
-  (tel/event! ::config-log {:level :info :msg (str "Logging configured:\n" (with-out-str (pprint (tel/check-interop))))})
-  ;; The following is needed because of datahike; no timbre-logging->telemere!
-  (timbre/set-config! (assoc timbre/*config* :min-level [[#{"datahike.*"} :error]
-                                                         [#{"konserve.*"} :error]]))
-  (log! :info (str "======= Starting. config-log! executed " (now) " ==========")))
+  (let [config (or (not-empty (-> "config.edn" slurp edn/read-string)) {})
+        transport (or (:mcp-transport config) :streamable)]
+    ;; Remove any default console handler that might exist
+    (tel/remove-handler! :default/console) ; ToDo: Guessing on :stacktraces true
+    (case transport
+      :stdio      (tel/add-handler! :default/console (tel/handler:console {:output-fn stdio-console-output-fn :stacktraces true}))
+      :streamable (tel/add-handler! :default/console (tel/handler:console {:output-fn custom-console-output-fn :stacktraces true})))
+    (tel/add-handler! :agent/log (tel/handler:file {:output-fn stk-log-output-fn
+                                                    :path "./logs/stk-log.txt"
+                                                    :interval :daily}))
+    (tel-log/tools-logging->telemere!) ;; Send tools.logging through telemere. Check this with (tel/check-interop)
+    ;; ONLY redirect streams if NOT running as MCP server..... I think it is okay if we NEVER redirect streams.
+    ;;(when-not (System/getenv "MCP_MODE") (tel/streams->telemere!))
+    (tel/event! ::config-log {:level :info :msg (str "Logging configured:\n" (with-out-str (pprint (tel/check-interop))))})
+    ;; The following is needed because of datahike; no timbre-logging->telemere!
+    (timbre/set-config! (assoc timbre/*config* :min-level [[#{"datahike.*"} :error]
+                                                           [#{"konserve.*"} :error]]))
+    (log! :info (str "======= Starting. config-log! executed " (now) " =========="))))
 
 (defn ^:diag unconfig-log!
   "Set :default/console back to its default handler. Typically done at REPL."

@@ -1,11 +1,18 @@
-(ns situations.bottleneck
+(ns stk.descriptions.theories.bottleneck
   "FOL translation of sched6 data/onto/sched6/challenges/bottleneck.ttl (v2.3).
-   First entry in the STK canonical-situation (competency) library.
+   First entry in the STK canonical-Description (competency) library.
 
-   A canonical Situation asserts STK competency in a circumstance: it carries the
-   science that warrants its causal claims (here Li & Meerkov 2009, queuing theory,
-   Theory of Constraints), the computable predicates a recognizer needs, and glosses
-   for mentoring human participants.
+   DnS ORIENTATION: this file is a DESCRIPTION - the type-like thing (in DUL,
+   Theory, Plan, and Diagnosis are subclasses of Description). Situations are
+   the instance-like settings that `satisfy` a Description. There is no
+   'Situation Type' category: kinds of situations are given by the Descriptions
+   they satisfy. Interviews CHARACTERIZE Situations (populate their settings
+   with claims) and SPECIALIZE Descriptions (bind roles to partner vocabulary).
+
+   A canonical Description asserts STK competency in a circumstance: it carries
+   the science that warrants its causal claims (here Li & Meerkov 2009, queuing
+   theory, Theory of Constraints), the computable predicates a recognizer needs,
+   and glosses for mentoring human participants.
 
    CONVENTIONS (inherited from sched6 data/onto/experiment/sched6/task-relations.clj)
    ---------------------------------------------------------------------------------
@@ -18,10 +25,10 @@
        - `axioms-enriched` : n-ary relations that collapse OWL reification chains,
                              plus COMPUTABLE definitions the recognizer executes.
                              Each enrichment is reviewed judgment.
-   * Two ground-fact sets (NEW, the recognizer contract):
+   * Two ground-fact sets (the recognizer contract):
        - `ground-claims` : low-level observables as feeds would supply them
-                           (topology, cycle times, buffer states). At ingestion each
-                           acquires the claim envelope (valid-time, modality,
+                           (topology, occupancy times, buffer states). At ingestion
+                           each acquires the claim envelope (valid-time, modality,
                            provenance) per etk docs/etk-diachronic-claims.md.
        - `oracle`        : what the hand-built TTL ABox asserts about the situation.
                            The recognizer must RECONSTRUCT these from ground-claims
@@ -38,11 +45,11 @@
   {:ontology-iri "http://sched6.org/ont/bottleneck.owl"
    :source-file  "sched6:data/onto/sched6/challenges/bottleneck.ttl"
    :source-version "2.3"
-   :label        "Bottleneck Situation"
+   :label        "Bottleneck Description"
    :imports      ["EMF causality/composition/correlation/interpretation/participation"
                   "sched6 event-patterns, performance-goals"
                   "DUL Roles, SystemsLite"]
-   :purpose      (str "Canonical situation: throughput constrained by the station with maximum cycle time.\n"
+   :purpose      (str "Canonical Description: throughput constrained by the station with maximum cycle time.\n"
                       "Two viewpoints:\n"
                       "  1) generic form (infinite buffers) from cycle-time imbalance, and\n"
                       "  2) buffered extension adds blocking/starvation coupling through finite buffers (Li & Meerkov 2009).\n"
@@ -357,7 +364,7 @@
 
 ;;; ===========================================================================
 ;;; ORACLE - what the TTL ABox hand-asserts about this scenario. The recognizer
-;;; must reconstruct these (module situation-identifier naming) from
+;;; must reconstruct these (modulo situation-identifier naming) from
 ;;; ground-claims alone. Reconstruction = PoC success criterion.
 ;;; ===========================================================================
 
@@ -393,7 +400,7 @@
 
 (def provenance
   '{sit-1
-    {:satisfies      bneck/BottleneckStateType         ; the description satisfied
+    {:satisfies      bneck/BottleneckStateType         ; the Description element satisfied
      :ttl-source     "bottleneck#production-line-situation-1"
      :constructed-by :recognizer                       ; vs :hand-asserted, :adapted
      :fit-verdict    :satisfied                        ; vs :closest-template, :none
